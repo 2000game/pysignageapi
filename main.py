@@ -11,7 +11,7 @@ def getcall(datapoint):
         return
 
 def postcall(datapoint, body=None):
-    r = requests.post(host + datapoint, body=body)
+    r = requests.post(host + datapoint, data=body)
     if r.status_code == 200:
         return True
     else:

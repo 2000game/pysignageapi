@@ -15,26 +15,42 @@ def postcall(datapoint, body=None):
     if r.status_code == 200:
         return True
     else:
-        return False
+        raise TypeError
 
 def convert_string_to_json(string):
     return json.loads(string)
 
 def set_tv_status(id, state):
-    postcall("/pitv/"+ id, {"status": state})
+    if state == 'false':
+        postcall("/pitv/"+ id, {"status": state})
+    else:
+        postcall("/pitv/" + id, json.dumps({"status": state}))
 
 tvlist = []
 
-text = getcall("/players")
+def update_tv_list():
+    text = getcall("/players")
 
-json_response = convert_string_to_json(text)
+    json_response = convert_string_to_json(text)
 
-for i in json_response['data']['objects']:
-    id = i['_id']
-    name = i['name']
-    tvlist.append({"id": id, "name": name})
+    for i in json_response['data']['objects']:
+        id = i['_id']
+        name = i['name']
+        status = i['tvStatus']
+        tvlist.append({"id": id, "name": name, "status": status})
 
-for i in tvlist:
-    set_tv_status(i['id'], 'false')
 
-print(json_response['data']['objects'])
+def turnalloff(tvlist):
+    for i in tvlist:
+        set_tv_status(i['id'], 'false')
+
+def turnallon(tvlist):
+    for i in tvlist:
+        set_tv_status(i['id'], 'true')
+update_tv_list()
+
+#turnalloff(tvlist)
+turnallon(tvlist)
+
+update_tv_list()
+print("Z")

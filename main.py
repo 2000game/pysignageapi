@@ -6,7 +6,7 @@ host = "http://pi:pi@10.10.1.121:3000/api"
 def getcall(datapoint):
     r = requests.get(host + datapoint)
     if r.status_code == 200:
-        return r.text
+        return convert_string_to_json(r.text)
     else:
         return
 
@@ -29,15 +29,27 @@ def set_tv_status(id, state):
 tvlist = []
 
 def update_tv_list():
-    text = getcall("/players")
+    reply = getcall("/players")
 
-    json_response = convert_string_to_json(text)
 
-    for i in json_response['data']['objects']:
+    for i in reply['data']['objects']:
         id = i['_id']
         name = i['name']
         status = i['tvStatus']
         tvlist.append({"id": id, "name": name, "status": status})
+
+
+def update_tv(id):
+    reply = getcall(f"/players/{id}")
+    for i in tvlist:
+        if i['id'] == id:
+            index = tvlist.index(i)
+    id = reply['data']['_id']
+    name = reply['data']['name']
+    status = reply['data']['tvStatus']
+    dic = {"id": id, "name": name, "status": status}
+    tvlist[index] = dic
+    return dic
 
 
 def turnalloff(tvlist):
@@ -50,7 +62,7 @@ def turnallon(tvlist):
 update_tv_list()
 
 #turnalloff(tvlist)
-turnallon(tvlist)
-
-update_tv_list()
+#turnallon(tvlist)
+update_tv('5f52a141926b040819e9e037')
+#update_tv_list()
 print("Z")

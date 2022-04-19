@@ -8,10 +8,10 @@ host = "10.10.1.121"
 class PySignage():
     def __init__(self, ip, username, password):
         self.host = f"http://{username}:{password}@{ip}:3000/api"
-        self.group_names_countdown_only = ["EquipRe", "Wegweiser_Bar_Mitte", "Wegweiser_Bar_Oben", "Wegweiser_Bar_Unten"]
-        self.group_names_countdown_and_stream = ["Beamer+", "EquipLi", ]
+        self.group_names_countdown_only = ['EquipRe', "Wegweiser_Bar_Mitte", "Wegweiser_Bar_Oben", "Wegweiser_Bar_Unten"]
+        self.group_names_countdown_and_stream = ['Beamer+', 'EquipLi', 'Strkr22 - Individuel']
         self.playlist_countdown_only_id = "Countdown"
-        self.playlist_countdown_and_stream_id = "Video Anzeigen Countdown"
+        self.playlist_countdown_and_stream_id = 'Video Anzeigen  Countdown'
         self.playerList = {}
         self.groupList = []
         self.update_playerList()
@@ -26,8 +26,8 @@ class PySignage():
             name = i['name']
             tvStatus = i['tvStatus']
             attributes = i
-            device = _device(id, name, tvStatus, attributes)
-            self.playerList.update({name: {'id': id, "device_class": device, "group_id": attributes['group']['_id'], "group_name": attributes['group']['name']}})
+            device = ddevice(id, name, tvStatus, attributes)
+            self.playerList.update({name: {'id': id, "device_class": device, "group_id": attributes['group']['_id'], "group_name": attributes['group']['name'], "ip": attributes['myIpAddress'].split(' ')[0]}})
 
     def update_video_players(self):
         for player in self.playerList:
@@ -49,6 +49,8 @@ class PySignage():
         else:
             raise TypeError
 
+    def get_playlists(self):
+        return self.get_call("/playlists")
 
     def string_to_json(self, string):
         return json.loads(string)
@@ -88,4 +90,4 @@ class _device():
         self.attributes = attributes
 
 PySignage = PySignage(host, "pi", "pi")
-print("Test")
+PySignage.end_stream()

@@ -4,10 +4,38 @@ import json
 #host = "http://pi:pi@10.10.1.121:3000/api"
 host = "10.10.1.121"
 
+class PySigngagePlayer():
+    def __init__(self, ip, username, password, port=8000):
+        self.host = f"http://{username}:{password}@{ip}:{port}/api"
+        self.status = self.get_status()
+
+
+    def post_call(self, datapoint, body=None):
+        r = requests.post(self.host + datapoint, data=body)
+        if r.status_code == 200:
+            return True
+        else:
+            raise TypeError
+
+    def get_call(self, datapoint):
+        r = requests.get(self.host + datapoint)
+        if r.status_code == 200:
+            return self.string_to_json(r.text)
+        else:
+            return
+
+    def string_to_json(self, string):
+        return json.loads(string)
+
+    def get_status(self):
+        return self.get_call("/status")
+
+    def play_playlist(self, playlist_id):
+        self.post_call(f"/play/files/play?file={playlist_id}")
 
 class PySignage():
-    def __init__(self, ip, username, password):
-        self.host = f"http://{username}:{password}@{ip}:3000/api"
+    def __init__(self, ip, username, password, port=3000):
+        self.host = f"http://{username}:{password}@{ip}:{port}/api"
         self.group_names_countdown_only = ['EquipRe', "Wegweiser_Bar_Mitte", "Wegweiser_Bar_Oben", "Wegweiser_Bar_Unten"]
         self.group_names_countdown_and_stream = ['Beamer+', 'EquipLi', 'Strkr22 - Individuel']
         self.playlist_countdown_only_id = "Countdown"
@@ -26,7 +54,7 @@ class PySignage():
             name = i['name']
             tvStatus = i['tvStatus']
             attributes = i
-            device = ddevice(id, name, tvStatus, attributes)
+            device = _device(id, name, tvStatus, attributes)
             self.playerList.update({name: {'id': id, "device_class": device, "group_id": attributes['group']['_id'], "group_name": attributes['group']['name'], "ip": attributes['myIpAddress'].split(' ')[0]}})
 
     def update_video_players(self):
@@ -89,5 +117,7 @@ class _device():
         self.group_name = attributes['group']['name']
         self.attributes = attributes
 
-PySignage = PySignage(host, "pi", "pi")
-PySignage.end_stream()
+pysignage = PySignage(host, "pi", "pi")
+
+Wegweiser_Bar_unten = PySigngagePlayer('10.10.1.221', "pi", "pi", 8000)
+Wegweiser_Bar_unten.play_playlist('Countdown')

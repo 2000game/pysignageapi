@@ -1,14 +1,15 @@
+import time
+
 import requests
 import json
+import threading
 
 #host = "http://pi:pi@10.10.1.121:3000/api"
 host = "10.10.1.121"
 
-class PySigngagePlayer():
-    def __init__(self, ip, username, password, port=8000):
+class PySignageAPI():
+    def __init__(self, ip, username, password, port):
         self.host = f"http://{username}:{password}@{ip}:{port}/api"
-        self.status = self.get_status()
-
 
     def post_call(self, datapoint, body=None):
         r = requests.post(self.host + datapoint, data=body)
@@ -27,17 +28,39 @@ class PySigngagePlayer():
     def string_to_json(self, string):
         return json.loads(string)
 
+class PySigngagePlayer(PySignageAPI):
+    def __init__(self, ip, username, password, port=8000):
+        super().__init__(ip, username, password, port)
+        self.cd_file_name = "CD 5Min FINAL 20220414.mov"
+        self.stream_file_name = "Stream.stream"
+
+        self.status = self.get_status()
+
     def get_status(self):
         return self.get_call("/status")
 
     def play_playlist(self, playlist_id):
         self.post_call(f"/play/files/play?file={playlist_id}")
 
-class PySignage():
+    def play_file(self, file_id):
+        self.post_call(f"/play/files/play?file={file_id}")
+
+    def play_stream(self):
+        self.play_file(self.stream_file_name)
+
+    def play_countdown(self):
+        self.play_file(self.cd_file_name)
+
+    def forward(self):
+        self.post_call("/playlistmedia/forward")
+
+
+
+class PySignageServer(PySignageAPI):
     def __init__(self, ip, username, password, port=3000):
-        self.host = f"http://{username}:{password}@{ip}:{port}/api"
+        super().__init__(ip, username, password, port)
         self.group_names_countdown_only = ['EquipRe', "Wegweiser_Bar_Mitte", "Wegweiser_Bar_Oben", "Wegweiser_Bar_Unten"]
-        self.group_names_countdown_and_stream = ['Beamer+', 'EquipLi', 'Strkr22 - Individuel']
+        self.group_names_countdown_and_stream = ['Beamer+', 'EquipLi']
         self.playlist_countdown_only_id = "Countdown"
         self.playlist_countdown_and_stream_id = 'Video Anzeigen  Countdown'
         self.playerList = {}
@@ -46,7 +69,6 @@ class PySignage():
         self.video_players = []
         self.update_video_players()
 
-
     def update_playerList(self):
         reply = self.get_call("/players")
         for i in reply['data']['objects']:
@@ -54,34 +76,17 @@ class PySignage():
             name = i['name']
             tvStatus = i['tvStatus']
             attributes = i
-            device = _device(id, name, tvStatus, attributes)
-            self.playerList.update({name: {'id': id, "device_class": device, "group_id": attributes['group']['_id'], "group_name": attributes['group']['name'], "ip": attributes['myIpAddress'].split(' ')[0]}})
+            ip = attributes['myIpAddress'].split(' ')[0]
+            self.playerList.update({name: {'id': id, "device_class": PySigngagePlayer(ip, "pi", "pi"), "group_id": attributes['group']['_id'], "group_name": attributes['group']['name'], "ip": ip}})
 
     def update_video_players(self):
         for player in self.playerList:
             if self.playerList[player]['group_name'] in self.group_names_countdown_and_stream or self.playerList[player]['group_name'] in self.group_names_countdown_only:
                 self.video_players.append(player)
 
-    def get_call(self, datapoint):
-        r = requests.get(self.host + datapoint)
-        if r.status_code == 200:
-            return self.string_to_json(r.text)
-        else:
-            return
-
-
-    def post_call(self, datapoint, body=None):
-        r = requests.post(self.host + datapoint, data=body)
-        if r.status_code == 200:
-            return True
-        else:
-            raise TypeError
 
     def get_playlists(self):
         return self.get_call("/playlists")
-
-    def string_to_json(self, string):
-        return json.loads(string)
 
     def playlist_once(self, player_id, playlist_id):
         self.post_call(f"/setplaylist/{player_id}/{playlist_id}")
@@ -100,24 +105,30 @@ class PySignage():
     def end_stream(self):
         for player_name in self.video_players:
             id = self.playerList[player_name]['id']
-            if self.playerList[player_name]['group_name'] in self.group_names_countdown_and_stream:
+            if self.playerList[player_name]['group_name'] in self.group_names_countdown_and_stream or self.playerList[player_name]['group_name'] in self.group_names_countdown_only:
                 self.forward_playlist(id)
 
-class _group():
-    def __init__(self, id, name):
-        self.id = id
-        self.name = name
+    def countdown_thread(self, player_pointer):
+        player_pointer.play_countdown()
 
-class _device():
-    def __init__(self, id, name, tvStatus, attributes):
-        self.id = id
-        self.name = name
-        self.tvStatus = tvStatus
-        self.group_id = attributes['group']['_id']
-        self.group_name = attributes['group']['name']
-        self.attributes = attributes
+    def stream_thread(self, player_pointer):
+        player_pointer.play_countdown()
+        time.sleep(326)
+        player_pointer.play_stream()
 
-pysignage = PySignage(host, "pi", "pi")
+    def create_threads(self):
+        thread_list = []
+        for player_name in self.video_players:
+            if self.playerList[player_name]['group_name'] in self.group_names_countdown_and_stream:
+                thread_list.append(threading.Thread(target=self.stream_thread, args=(self.playerList[player_name]['device_class'],)))
+            elif self.playerList[player_name]['group_name'] in self.group_names_countdown_only:
+                thread_list.append(threading.Thread(target=self.countdown_thread, args=(self.playerList[player_name]['device_class'],)))
 
-Wegweiser_Bar_unten = PySigngagePlayer('10.10.1.221', "pi", "pi", 8000)
-Wegweiser_Bar_unten.play_playlist('Countdown')
+        for thread in thread_list:
+            thread.start()
+
+pysignageserver = PySignageServer(host, "pi", "pi")
+pysignageserver.create_threads()
+
+# Wegweiser_Bar_unten = PySigngagePlayer('10.10.1.216', "pi", "pi", 8000)
+# Wegweiser_Bar_unten.forward()

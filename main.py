@@ -128,7 +128,10 @@ class PySignageServer(PySignageAPI):
             thread.start()
 
 pysignageserver = PySignageServer(host, "pi", "pi")
-pysignageserver.create_threads()
+print("Test")
+#pysignageserver.play_stream()
+#pysignageserver.create_threads()
+pysignageserver.end_stream()
 
 # Wegweiser_Bar_unten = PySigngagePlayer('10.10.1.216', "pi", "pi", 8000)
 # Wegweiser_Bar_unten.forward()

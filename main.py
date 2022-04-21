@@ -34,7 +34,7 @@ class PySigngagePlayer(PySignageAPI):
         self.cd_file_name = "CD 5Min FINAL 20220414.mov"
         self.stream_file_name = "Stream.stream"
 
-        self.status = self.get_status()
+        #self.status = self.get_status()
 
     def get_status(self):
         return self.get_call("/status")
@@ -69,6 +69,26 @@ class PySignageServer(PySignageAPI):
         self.video_players = []
         self.update_video_players()
 
+    class _group():
+        def __init__(self, group_id, group_name, group_data):
+            self.group_id = group_id
+            self.group_name = group_name
+            self.group_data = group_data
+            self.playlists = []
+
+        def return_scheduled_playlist(self):
+            week_day = (int(time.strftime("%w"))+1)%8
+            month_day = time.strftime("%d")
+            time_clock = time.strftime("%H:%M")
+            date = time.strftime("%Y-%m-%d")
+
+            self.playlists = self.group_data['data']['deployedPlaylists']
+
+
+    def get_group_data(self, group_id):
+        group_data = self.get_call(f"/groups/{group_id}")
+        return group_data
+
     def update_playerList(self):
         reply = self.get_call("/players")
         for i in reply['data']['objects']:
@@ -77,13 +97,15 @@ class PySignageServer(PySignageAPI):
             tvStatus = i['tvStatus']
             attributes = i
             ip = attributes['myIpAddress'].split(' ')[0]
-            self.playerList.update({name: {'id': id, "device_class": PySigngagePlayer(ip, "pi", "pi"), "group_id": attributes['group']['_id'], "group_name": attributes['group']['name'], "ip": ip}})
+            group_id = attributes['group']['_id']
+            group_name = attributes['group']['name']
+            group_data = self.get_group_data(group_id)
+            self.playerList.update({name: {'id': id, "device_class": PySigngagePlayer(ip, "pi", "pi"), "group_id": group_id, "group_name": group_name, "group_class": self._group(group_id, group_name, group_data), "ip": ip}})
 
     def update_video_players(self):
         for player in self.playerList:
             if self.playerList[player]['group_name'] in self.group_names_countdown_and_stream or self.playerList[player]['group_name'] in self.group_names_countdown_only:
                 self.video_players.append(player)
-
 
     def get_playlists(self):
         return self.get_call("/playlists")
@@ -108,7 +130,7 @@ class PySignageServer(PySignageAPI):
             if self.playerList[player_name]['group_name'] in self.group_names_countdown_and_stream or self.playerList[player_name]['group_name'] in self.group_names_countdown_only:
                 self.forward_playlist(id)
 
-    def countdown_thread(self, player_pointer):
+    def start_countdown_thread(self, player_pointer):
         player_pointer.play_countdown()
 
     def stream_thread(self, player_pointer):
@@ -122,7 +144,7 @@ class PySignageServer(PySignageAPI):
             if self.playerList[player_name]['group_name'] in self.group_names_countdown_and_stream:
                 thread_list.append(threading.Thread(target=self.stream_thread, args=(self.playerList[player_name]['device_class'],)))
             elif self.playerList[player_name]['group_name'] in self.group_names_countdown_only:
-                thread_list.append(threading.Thread(target=self.countdown_thread, args=(self.playerList[player_name]['device_class'],)))
+                thread_list.append(threading.Thread(target=self.start_countdown_thread, args=(self.playerList[player_name]['device_class'],)))
 
         for thread in thread_list:
             thread.start()
@@ -131,7 +153,7 @@ pysignageserver = PySignageServer(host, "pi", "pi")
 print("Test")
 #pysignageserver.play_stream()
 #pysignageserver.create_threads()
-pysignageserver.end_stream()
+#pysignageserver.end_stream()
 
 # Wegweiser_Bar_unten = PySigngagePlayer('10.10.1.216', "pi", "pi", 8000)
 # Wegweiser_Bar_unten.forward()

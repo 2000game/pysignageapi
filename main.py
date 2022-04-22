@@ -28,11 +28,14 @@ class PySignageAPI():
     def string_to_json(self, string):
         return json.loads(string)
 
+
 class PySigngagePlayer(PySignageAPI):
     def __init__(self, ip, username, password, port=8000):
         super().__init__(ip, username, password, port)
         self.cd_file_name = "CD 5Min FINAL 20220414.mov"
         self.stream_file_name = "Stream.stream"
+        self.stream_cd_playlist_name = 'Video Anzeigen Countdown'
+        self.cd_playlist_name = 'Countdown'
 
         #self.status = self.get_status()
 
@@ -40,16 +43,19 @@ class PySigngagePlayer(PySignageAPI):
         return self.get_call("/status")
 
     def play_playlist(self, playlist_id):
-        self.post_call(f"/play/files/play?file={playlist_id}")
+        body = {"play": True}
+        self.post_call(f"/play/playlists/{playlist_id}", body)
 
     def play_file(self, file_id):
         self.post_call(f"/play/files/play?file={file_id}")
 
     def play_stream(self):
-        self.play_file(self.stream_file_name)
+        #self.play_file(self.stream_file_name)
+        self.play_playlist(self.stream_cd_playlist_name)
 
     def play_countdown(self):
-        self.play_file(self.cd_file_name)
+        #self.play_file(self.cd_file_name)
+        self.play_playlist(self.cd_playlist_name)
 
     def forward(self):
         self.post_call("/playlistmedia/forward")
@@ -62,7 +68,7 @@ class PySignageServer(PySignageAPI):
         self.group_names_countdown_only = ['EquipRe', "Wegweiser_Bar_Mitte", "Wegweiser_Bar_Oben", "Wegweiser_Bar_Unten"]
         self.group_names_countdown_and_stream = ['Beamer+', 'EquipLi']
         self.playlist_countdown_only_id = "Countdown"
-        self.playlist_countdown_and_stream_id = 'Video Anzeigen  Countdown'
+        self.playlist_countdown_and_stream_id = 'Video Anzeigen Countdown'
         self.playerList = {}
         self.groupList = []
         self.update_playerList()
@@ -134,8 +140,6 @@ class PySignageServer(PySignageAPI):
         player_pointer.play_countdown()
 
     def stream_thread(self, player_pointer):
-        player_pointer.play_countdown()
-        time.sleep(326)
         player_pointer.play_stream()
 
     def create_threads(self):
@@ -146,14 +150,23 @@ class PySignageServer(PySignageAPI):
             elif self.playerList[player_name]['group_name'] in self.group_names_countdown_only:
                 thread_list.append(threading.Thread(target=self.start_countdown_thread, args=(self.playerList[player_name]['device_class'],)))
 
-        for thread in thread_list:
+        self.thread_list = thread_list
+
+    def start_threads(self):
+        for thread in self.thread_list:
             thread.start()
 
+    def get_screens(self):
+        return self.get_call("/players")
+
 pysignageserver = PySignageServer(host, "pi", "pi")
+pysignageserver.create_threads()
+#a = pysignageserver.get_screens()
 print("Test")
+pysignageserver.start_threads()
 #pysignageserver.play_stream()
-#pysignageserver.create_threads()
+#pysignageserver.start_threads()
 #pysignageserver.end_stream()
 
-# Wegweiser_Bar_unten = PySigngagePlayer('10.10.1.216', "pi", "pi", 8000)
-# Wegweiser_Bar_unten.forward()
+# pysignageplayer = PySigngagePlayer("10.10.1.213", "pi", "pi")
+# pysignageplayer.play_playlist("Welcome_Presession")

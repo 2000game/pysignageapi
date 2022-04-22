@@ -77,11 +77,10 @@ class PySignageServer(PySignageAPI):
             self.playlists = []
 
         def return_scheduled_playlist(self):
-            week_day = (int(time.strftime("%w"))+1)%8
+            week_day = str((int(time.strftime("%w"))+1)%8)
             month_day = time.strftime("%d")
             time_clock = time.strftime("%H:%M")
             date = time.strftime("%Y-%m-%d")
-
             self.playlists = self.group_data['data']['deployedPlaylists']
 
 
@@ -100,6 +99,7 @@ class PySignageServer(PySignageAPI):
             group_id = attributes['group']['_id']
             group_name = attributes['group']['name']
             group_data = self.get_group_data(group_id)
+            #prevent duplicate groups
             self.playerList.update({name: {'id': id, "device_class": PySigngagePlayer(ip, "pi", "pi"), "group_id": group_id, "group_name": group_name, "group_class": self._group(group_id, group_name, group_data), "ip": ip}})
 
     def update_video_players(self):

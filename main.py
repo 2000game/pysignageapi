@@ -3,6 +3,8 @@ import time
 import requests
 import json
 import threading
+from datetimerange import DateTimeRange
+import datetime
 
 #host = "http://pi:pi@10.10.1.121:3000/api"
 host = "10.10.1.121"
@@ -81,14 +83,64 @@ class PySignageServer(PySignageAPI):
             self.group_name = group_name
             self.group_data = group_data
             self.playlists = []
-            self.return_scheduled_playlist()
+            self.refresh_playlists()
+            print(f"Group {self.group_name}, playlist = {self.return_scheduled_playlist()['name']}")
+
+        def refresh_playlists(self):
+            self.playlists = self.group_data['data']['deployedPlaylists']
 
         def return_scheduled_playlist(self):
-            week_day = str((int(time.strftime("%w"))+1)%8)
-            month_day = time.strftime("%d")
-            time_clock = time.strftime("%H:%M")
-            date = time.strftime("%Y-%m-%d")
-            self.playlists = self.group_data['data']['deployedPlaylists']
+            week_day = (int(time.strftime("%w"))+1)%8
+            month_day = int(time.strftime("%d"))
+            current_time = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S+0100")
+            default_playlist = self.playlists[0]
+            possible_playlists = []
+            for playlist in self.playlists[1:]:
+                if playlist['plType'] != "regular":
+                    continue
+                settings = playlist['settings']
+                if settings['timeEnable']:
+                    if week_day in settings['weekdays']:
+                        if month_day in settings['monthdays']:
+                            if 'startdate' in settings:
+                                startdate = settings['startdate'][:19]+ "+0000"
+                                enddate = settings['enddate'][:19]+"+0000"
+                                starttime = settings['starttimeObj'][10:19] + "+0000"
+                                endtime = settings['endtimeObj'][10:19] + "+0000"
+                                time_range = DateTimeRange(starttime, endtime)
+                                date_range = DateTimeRange(startdate, enddate)
+                                if current_time in time_range and current_time in date_range:
+                                    possible_playlists.append(playlist)
+                            else:
+                                starttime = settings['starttime']
+                                endtime = settings['endtime']
+                                time_now = datetime.datetime.now()
+                                starttime = time_now.replace(hour=int(starttime[:2]), minute=int(starttime[3:5]), second=0, microsecond=0)
+                                endtime = time_now.replace(hour=int(endtime[:2]), minute=int(endtime[3:5]), second=0, microsecond=0)
+                                if time_now >= starttime and time_now <= endtime:
+                                    possible_playlists.append(playlist)
+
+            if len(possible_playlists) == 0:
+                return default_playlist
+            elif len(possible_playlists) == 1:
+                return possible_playlists[0]
+            else:
+                closest_start_time = None
+                for playlist in possible_playlists:
+                    settings = playlist['settings']
+                    if "starttime" in settings:
+                        if closest_start_time is None:
+                            closest_start_time = settings['starttime']
+                        else:
+                            starttime = settings['starttime']
+                            time_now = datetime.datetime.now()
+                            closest_time =  time_now.replace(hour=int(closest_start_time[:2]), minute=int(closest_start_time[3:5]), second=0, microsecond=0)
+                            starttime = time_now.replace(hour=int(starttime[:2]), minute=int(starttime[3:5]), second=0, microsecond=0)
+                            if starttime > closest_time:
+                                closest_start_time = settings['starttime']
+            return next(playlist for playlist in possible_playlists if playlist['settings']['starttime'] == closest_start_time)
+
+
 
 
     def get_group_data(self, group_id):
@@ -164,7 +216,6 @@ pysignageserver = PySignageServer(host, "pi", "pi")
 pysignageserver.create_threads()
 #a = pysignageserver.get_screens()
 print("Test")
-pysignageserver.start_threads()
 #pysignageserver.play_stream()
 #pysignageserver.start_threads()
 #pysignageserver.end_stream()

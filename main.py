@@ -72,11 +72,14 @@ class PySignageServer(PySignageAPI):
         self.playlist_countdown_only_id = "Countdown"
         self.playlist_countdown_and_stream_id = 'Video Anzeigen Countdown'
         self.playerList = {}
+        # es macht sinn wenn man nur playlisten hat die auch in einer group deploye sind, diese kann man ausführen und werden auf allen geräten die diese haben ausgeführt
+
+        self.playlists = []
+        self.device_dict = {}
         self.group_dict = {}
-        self.refresh_group_dict()
-        self.update_playerList()
-        self.video_players = []
-        self.update_video_players()
+        self.refresh_data()
+
+
 
     class _group():
         def __init__(self, group_id, group_name, group_data):
@@ -141,83 +144,87 @@ class PySignageServer(PySignageAPI):
             return next(playlist for playlist in possible_playlists if playlist['settings']['starttime'] == closest_start_time)
 
     class _device():
-        def __init__(self, id, name, ip, player_class, group_id, group_pointer):
+        def __init__(self, id, name, ip, player_class, group_id, group_pointer, device_data):
             self.id = id
             self.name = name
             self.ip = ip
             self.player_class = player_class
             self.group_id = group_id
             self.group_pointer = group_pointer
-
+            self.device_data = device_data
+            self.active_playlist = device_data['currentPlaylist']
 
     def get_group_data(self, group_id):
         group_data = self.get_call(f"/groups/{group_id}")
         return group_data
+
+    def refresh_data(self):
+        self.refresh_group_dict()
+        self.refresh_device_dict()
+        self.refresh_playlists()
+        self.create_threads()
 
     def refresh_group_dict(self):
         self.group_dict = {}
         for group in self.get_call("/groups")['data']:
             self.group_dict.update({group['_id']: group})
 
-    def update_playerList(self):
-        reply = self.get_call("/players")
-        for i in reply['data']['objects']:
-            id = i['_id']
-            name = i['name']
-            tvStatus = i['tvStatus']
-            attributes = i
-            ip = attributes['myIpAddress'].split(' ')[0]
-            group_id = attributes['group']['_id']
-            group_name = attributes['group']['name']
-            group_data = self.get_group_data(group_id)
-            #prevent duplicate groups
-            self.playerList.update({name: {'id': id, "device_class": PySigngagePlayer(ip, "pi", "pi"), "group_id": group_id, "group_name": group_name, "group_class": self._group(group_id, group_name, group_data), "ip": ip}})
+    def refresh_device_dict(self):
+        self.device_dict = {}
+        for device in self.get_call("/players")['data']["objects"]:
+            id = device['_id']
+            name = device['name']
+            ip = device['myIpAddress'].split(" ")[0]
+            player_class = PySigngagePlayer(ip, 'pi', 'pi')
+            group_id = device['group']['_id']
+            group_pointer = self.group_dict[group_id]
+            device_class = self._device(id, name, ip, player_class, group_id, group_pointer, device)
+            self.device_dict.update({id: {"name": name, "device_class": device_class, "group_id": group_id, "group_pointer": group_pointer, "player_class": player_class}})
 
-    def update_video_players(self):
-        for player in self.playerList:
-            if self.playerList[player]['group_name'] in self.group_names_countdown_and_stream or self.playerList[player]['group_name'] in self.group_names_countdown_only:
-                self.video_players.append(player)
+    def refresh_playlists(self):
+        for group in self.group_dict.values():
+            for playlist in group['playlists']:
+                playlist_name = playlist['name']
+                if playlist_name not in self.playlists:
+                    self.playlists.append(playlist_name)
 
-    def get_playlists(self):
-        return self.get_call("/playlists")
-
-    def playlist_once(self, player_id, playlist_id):
-        self.post_call(f"/setplaylist/{player_id}/{playlist_id}")
+    def play_playlist_on_all_devices(self, playlist_name):
+        for device in self.device_dict.values():
+            if playlist_name in device['group_pointer']['playlists']:
+                device['device_class']['player_class'].play_playlist(playlist_name)
 
     def forward_playlist(self, player_id):
         self.post_call(f"/playlistmedia/{player_id}/forward")
 
-    def play_stream(self):
-        for player_name in self.video_players:
-            id = self.playerList[player_name]['id']
-            if self.playerList[player_name]['group_name'] in self.group_names_countdown_and_stream:
-                self.playlist_once(id, self.playlist_countdown_and_stream_id)
-            elif self.playerList[player_name]['group_name'] in self.group_names_countdown_only:
-                self.playlist_once(id, self.playlist_countdown_only_id)
-
     def end_stream(self):
-        for player_name in self.video_players:
-            id = self.playerList[player_name]['id']
-            if self.playerList[player_name]['group_name'] in self.group_names_countdown_and_stream or self.playerList[player_name]['group_name'] in self.group_names_countdown_only:
-                self.forward_playlist(id)
+        for device in self.device_dict.values():
+            if self.playlist_countdown_and_stream_id in device['group_pointer']['playlists']:
+                playlist = device['group_pointer'].return_scheduled_playlist()
+                device['player_class'].play_playlist(playlist['name'])
 
-    def start_countdown_thread(self, player_pointer):
-        player_pointer.play_countdown()
+    def countdown_thread(self, device_class):
+        player_class = device_class.player_class
+        player_class.play_countdown()
+        time.sleep(326)
+        playlist = device_class.group_pointer.return_scheduled_playlist()
+        player_class.play_playlist(playlist['name'])
 
     def stream_thread(self, player_pointer):
         player_pointer.play_stream()
 
     def create_threads(self):
         thread_list = []
-        for player_name in self.video_players:
-            if self.playerList[player_name]['group_name'] in self.group_names_countdown_and_stream:
-                thread_list.append(threading.Thread(target=self.stream_thread, args=(self.playerList[player_name]['device_class'],)))
-            elif self.playerList[player_name]['group_name'] in self.group_names_countdown_only:
-                thread_list.append(threading.Thread(target=self.start_countdown_thread, args=(self.playerList[player_name]['device_class'],)))
-
+        for device in self.device_dict.values():
+            device_playlists = device['group_pointer']['playlists']
+            for playlist in device_playlists:
+                name = playlist['name']
+                if name == self.playlist_countdown_and_stream_id:
+                    thread_list.append(threading.Thread(target=self.stream_thread, args=(device['player_class'],)))
+                elif name == self.playlist_countdown_only_id:
+                    thread_list.append(threading.Thread(target=self.countdown_thread, args=(device["device_class"],)))
         self.thread_list = thread_list
 
-    def start_threads(self):
+    def start_countdown(self):
         for thread in self.thread_list:
             thread.start()
 
@@ -225,12 +232,8 @@ class PySignageServer(PySignageAPI):
         return self.get_call("/players")
 
 pysignageserver = PySignageServer(host, "pi", "pi")
-pysignageserver.create_threads()
-#a = pysignageserver.get_screens()
-print("Test")
-#pysignageserver.play_stream()
-#pysignageserver.start_threads()
-#pysignageserver.end_stream()
+#pysignageserver.start_countdown()
+pysignageserver.end_stream()
 
 # pysignageplayer = PySigngagePlayer("10.10.1.213", "pi", "pi")
 # pysignageplayer.play_playlist("Welcome_Presession")

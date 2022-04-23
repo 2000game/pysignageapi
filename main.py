@@ -81,6 +81,7 @@ class PySignageServer(PySignageAPI):
             self.group_name = group_name
             self.group_data = group_data
             self.playlists = []
+            self.return_scheduled_playlist()
 
         def return_scheduled_playlist(self):
             week_day = str((int(time.strftime("%w"))+1)%8)

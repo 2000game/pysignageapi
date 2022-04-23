@@ -72,7 +72,8 @@ class PySignageServer(PySignageAPI):
         self.playlist_countdown_only_id = "Countdown"
         self.playlist_countdown_and_stream_id = 'Video Anzeigen Countdown'
         self.playerList = {}
-        self.groupList = []
+        self.group_dict = {}
+        self.refresh_group_dict()
         self.update_playerList()
         self.video_players = []
         self.update_video_players()
@@ -84,7 +85,6 @@ class PySignageServer(PySignageAPI):
             self.group_data = group_data
             self.playlists = []
             self.refresh_playlists()
-            print(f"Group {self.group_name}, playlist = {self.return_scheduled_playlist()['name']}")
 
         def refresh_playlists(self):
             self.playlists = self.group_data['data']['deployedPlaylists']
@@ -140,12 +140,24 @@ class PySignageServer(PySignageAPI):
                                 closest_start_time = settings['starttime']
             return next(playlist for playlist in possible_playlists if playlist['settings']['starttime'] == closest_start_time)
 
-
+    class _device():
+        def __init__(self, id, name, ip, player_class, group_id, group_pointer):
+            self.id = id
+            self.name = name
+            self.ip = ip
+            self.player_class = player_class
+            self.group_id = group_id
+            self.group_pointer = group_pointer
 
 
     def get_group_data(self, group_id):
         group_data = self.get_call(f"/groups/{group_id}")
         return group_data
+
+    def refresh_group_dict(self):
+        self.group_dict = {}
+        for group in self.get_call("/groups")['data']:
+            self.group_dict.update({group['_id']: group})
 
     def update_playerList(self):
         reply = self.get_call("/players")

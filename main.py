@@ -6,7 +6,6 @@ import threading
 from datetimerange import DateTimeRange
 import datetime
 
-#host = "http://pi:pi@10.10.1.121:3000/api"
 host = "10.10.1.121"
 
 class PySignageAPI():
@@ -51,9 +50,12 @@ class PySigngagePlayer(PySignageAPI):
     def play_file(self, file_id):
         self.post_call(f"/play/files/play?file={file_id}")
 
-    def play_stream(self):
+    def play_cd_stream(self):
         #self.play_file(self.stream_file_name)
         self.play_playlist(self.stream_cd_playlist_name)
+
+    def play_stream_only(self):
+        self.play_file(self.stream_file_name)
 
     def play_countdown(self):
         #self.play_file(self.cd_file_name)
@@ -63,7 +65,6 @@ class PySigngagePlayer(PySignageAPI):
         self.post_call("/playlistmedia/forward")
 
 
-
 class PySignageServer(PySignageAPI):
     def __init__(self, ip, username, password, port=3000):
         super().__init__(ip, username, password, port)
@@ -71,15 +72,11 @@ class PySignageServer(PySignageAPI):
         self.group_names_countdown_and_stream = ['Beamer+', 'EquipLi']
         self.playlist_countdown_only_id = "Countdown"
         self.playlist_countdown_and_stream_id = 'Video Anzeigen Countdown'
-        self.playerList = {}
-        # es macht sinn wenn man nur playlisten hat die auch in einer group deploye sind, diese kann man ausführen und werden auf allen geräten die diese haben ausgeführt
-
         self.playlists = []
         self.device_dict = {}
         self.group_dict = {}
         self.refresh_data()
-
-
+        self.deployed_groups = []
 
     class _group():
         def __init__(self, group_id, group_name, group_data):
@@ -90,7 +87,7 @@ class PySignageServer(PySignageAPI):
             self.refresh_playlists()
 
         def refresh_playlists(self):
-            self.playlists = self.group_data['data']['deployedPlaylists']
+            self.playlists = self.group_data['deployedPlaylists']
 
         def return_scheduled_playlist(self):
             week_day = (int(time.strftime("%w"))+1)%8
@@ -158,6 +155,15 @@ class PySignageServer(PySignageAPI):
         group_data = self.get_call(f"/groups/{group_id}")
         return group_data
 
+    def deploy_group(self, group_id, group_name):
+        body = {"deploy": True, "exportAssets": False, "_id": group_id, "name": group_name}
+        self.post_call(f"/groups/{group_id}", body)
+
+    def deploy_all_groups(self):
+        for group in self.group_dict.values:
+            self.deploy_group(group.group_id, group.group_name)
+
+
     def refresh_data(self):
         self.refresh_group_dict()
         self.refresh_device_dict()
@@ -167,7 +173,8 @@ class PySignageServer(PySignageAPI):
     def refresh_group_dict(self):
         self.group_dict = {}
         for group in self.get_call("/groups")['data']:
-            self.group_dict.update({group['_id']: group})
+            group_object = self._group(group['_id'], group['name'], group)
+            self.group_dict.update({group['_id']: group_object})
 
     def refresh_device_dict(self):
         self.device_dict = {}
@@ -183,57 +190,89 @@ class PySignageServer(PySignageAPI):
 
     def refresh_playlists(self):
         for group in self.group_dict.values():
-            for playlist in group['playlists']:
+            for playlist in group.group_data['playlists']:
                 playlist_name = playlist['name']
                 if playlist_name not in self.playlists:
                     self.playlists.append(playlist_name)
 
     def play_playlist_on_all_devices(self, playlist_name):
         for device in self.device_dict.values():
-            if playlist_name in device['group_pointer']['playlists']:
-                device['device_class']['player_class'].play_playlist(playlist_name)
+            playlists = self.return_group_playlist_names(device['group_id'])
+            if playlist_name in playlists:
+                device['device_class'].player_class.play_playlist(playlist_name)
+
+    def return_group_playlist_names(self, group_id):
+        playlist_names = []
+        for playlist in self.group_dict[group_id].group_data['deployedPlaylists']:
+            playlist_names.append(playlist['name'])
+        return playlist_names
 
     def forward_playlist(self, player_id):
         self.post_call(f"/playlistmedia/{player_id}/forward")
 
-    def end_stream(self):
+    def return_to_scheduled_playlists(self):
+        self.refresh_data()
         for device in self.device_dict.values():
-            if self.playlist_countdown_and_stream_id in device['group_pointer']['playlists']:
-                playlist = device['group_pointer'].return_scheduled_playlist()
-                device['player_class'].play_playlist(playlist['name'])
+            scheduled_playlist = device['group_pointer'].return_scheduled_playlist()['name']
+            if device['device_class'].active_playlist != scheduled_playlist:
+                device['player_class'].play_playlist(scheduled_playlist)
+            # if self.playlist_countdown_and_stream_id in device['group_pointer']['playlists']:
+            #     playlist = device['group_pointer'].return_scheduled_playlist()
+            #     device['player_class'].play_playlist(playlist['name'])
 
     def countdown_thread(self, device_class):
         player_class = device_class.player_class
         player_class.play_countdown()
         time.sleep(326)
-        playlist = device_class.group_pointer.return_scheduled_playlist()
-        player_class.play_playlist(playlist['name'])
+        group_id = device_class.group_id
+        group_name = device_class.group_pointer.group_name
+        if group_id not in self.deployed_groups:
+            self.deploy_group(group_id, group_name)
+            self.deployed_groups.append(group_id)
+        self.deployed_groups = []
 
     def stream_thread(self, player_pointer):
-        player_pointer.play_stream()
+        player_pointer.play_cd_stream()
 
     def create_threads(self):
-        thread_list = []
+        stream_thread_list = []
+        countdown_thread_list = []
+        stream_only_thread_list = []
         for device in self.device_dict.values():
-            device_playlists = device['group_pointer']['playlists']
+            device_playlists = device['group_pointer'].group_data['playlists']
             for playlist in device_playlists:
                 name = playlist['name']
                 if name == self.playlist_countdown_and_stream_id:
-                    thread_list.append(threading.Thread(target=self.stream_thread, args=(device['player_class'],)))
+                    stream_thread_list.append(threading.Thread(target=self.stream_thread, args=(device['player_class'],)))
                 elif name == self.playlist_countdown_only_id:
-                    thread_list.append(threading.Thread(target=self.countdown_thread, args=(device["device_class"],)))
-        self.thread_list = thread_list
+                    countdown_thread_list.append(threading.Thread(target=self.countdown_thread, args=(device['device_class'],)))
+        self.stream_thread_list = stream_thread_list
+        self.countdown_thread_list = countdown_thread_list
 
     def start_countdown(self):
-        for thread in self.thread_list:
+        thread_list = self.stream_thread_list + self.countdown_thread_list
+        for thread in thread_list:
             thread.start()
+
+    def play_stream_only(self):
+        for thread in self.stream_thread_list:
+            thread.start()
+
+    def end_stream(self):
+        for group in self.group_dict.values():
+            playlists = self.return_group_playlist_names(group.group_id)
+            if self.playlist_countdown_and_stream_id in playlists:
+                self.deploy_group(group.group_id, group.group_name)
 
     def get_screens(self):
         return self.get_call("/players")
 
+
 pysignageserver = PySignageServer(host, "pi", "pi")
 #pysignageserver.start_countdown()
 pysignageserver.end_stream()
+#pysignageserver.play_playlist_on_all_devices('Welcome_Presession')
+#pysignageserver.deploy_group(pysignageserver.group_dict['Beamer+'].group_id, 'Beamer+')
 
 # pysignageplayer = PySigngagePlayer("10.10.1.213", "pi", "pi")
 # pysignageplayer.play_playlist("Welcome_Presession")

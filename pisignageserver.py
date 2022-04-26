@@ -5,9 +5,6 @@ import datetime
 from PySignageRequestAPI import PySignageAPI
 from PyPlayerAPI import PySigngagePlayer
 
-host = "10.10.1.121"
-
-
 class PySignageServer(PySignageAPI):
     def __init__(self, ip, username, password, port=3000):
         super().__init__(ip, username, password, port)
@@ -251,14 +248,3 @@ class PySignageServer(PySignageAPI):
             playlists = self.return_group_playlist_names(device['group_id'])
             if playlist_name in playlists:
                 device['device_class'].player_class.play_playlist(playlist_name)
-
-
-
-
-
-#piplayer = PySigngagePlayer("10.10.1.130", "pi", "pi")
-#piplayer.play_cd_only()
-#piplayer.forward()
-pysignageserver = PySignageServer(host, "pi", "pi")
-#pysignageserver.play_countdown_stream()
-pysignageserver.return_to_scheduled_content()

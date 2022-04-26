@@ -1,4 +1,4 @@
-from PySignageRequestAPI import PySignageAPI
+from pysignageserver.PySignageRequestAPI import PySignageAPI
 class PySigngagePlayer(PySignageAPI):
     def __init__(self, ip, username, password, port=8000):
         super().__init__(ip, username, password, port)

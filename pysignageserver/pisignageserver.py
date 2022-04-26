@@ -2,8 +2,8 @@ import time
 import threading
 from datetimerange import DateTimeRange
 import datetime
-from PySignageRequestAPI import PySignageAPI
-from PyPlayerAPI import PySigngagePlayer
+from pysignageserver.PySignageRequestAPI import PySignageAPI
+from pysignageserver.PyPlayerAPI import PySigngagePlayer
 
 class PySignageServer(PySignageAPI):
     def __init__(self, ip, username, password, port=3000):

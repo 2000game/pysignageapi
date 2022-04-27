@@ -162,15 +162,16 @@ class PySignageServer(PySignageAPI):
         self.refresh()
         for device in self.device_dict.values():
             active_playlist = device['player_class'].get_active_playlist()
-            scheduled_playlist = device['group_pointer'].get_playable_playlists()['name']
-            if active_playlist != scheduled_playlist:
-                device['player_class'].stop_playlist(active_playlist)
-                return
+            scheduled_playlist = device['group_pointer'].return_scheduled_playlist()["name"]
             playlist_data = self.get_playlist_data(active_playlist)
             active_playlist_assets = [asset["filename"] for asset in playlist_data['assets']]
             active_asset = device['player_class'].get_active_asset()
             if active_asset not in active_playlist_assets:
                 device['player_class'].forward()
+                return
+            if active_playlist != scheduled_playlist:
+                device['player_class'].stop_playlist(active_playlist)
+
     # Thread Management
 
     def default_countdown_thread(self, device_class):
@@ -248,3 +249,7 @@ class PySignageServer(PySignageAPI):
             playlists = self.return_group_playlist_names(device['group_id'])
             if playlist_name in playlists:
                 device['device_class'].player_class.play_playlist(playlist_name)
+
+
+device = PySignageServer("10.10.1.121", "pi", "pi")
+device.return_to_scheduled_content()

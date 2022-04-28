@@ -170,6 +170,7 @@ class PySignageServer(PySignageAPI):
                 return
             if active_playlist != scheduled_playlist:
                 device['player_class'].stop_playlist(active_playlist)
+        return True
 
     # Thread Management
 
@@ -248,3 +249,4 @@ class PySignageServer(PySignageAPI):
             playlists = self.return_group_playlist_names(device['group_id'])
             if playlist_name in playlists:
                 device['device_class'].player_class.play_playlist(playlist_name)
+        return True

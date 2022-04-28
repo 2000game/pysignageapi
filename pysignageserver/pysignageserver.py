@@ -99,19 +99,19 @@ class PySignageServer(PySignageAPI):
         timestamp = int(datetime.datetime.now().timestamp()*1000)
         if group_pointer.last_deploy_timestamp in range(group_pointer.last_deploy_timestamp - 10, timestamp):
             body = {"deploy": True, "exportAssets": False, "_id": group_pointer.group_id, "name": group_pointer.group_name}
-            self._post_call(f"/groups/{group_pointer.group_id}", body)
+            self.post_call(f"/groups/{group_pointer.group_id}", body)
             group_pointer.last_deployed_timestamp = timestamp
 
     def _get_group_data(self, group_id):
-        group_data = self._get_call(f"/groups/{group_id}")
+        group_data = self.get_call(f"/groups/{group_id}")
         return group_data
 
     def _get_playlist_data(self, playlist_id):
-        playlist_data = self._get_call(f"/playlists/{playlist_id}")
+        playlist_data = self.get_call(f"/playlists/{playlist_id}")
         return playlist_data['data']
 
     def _get_screens(self):
-        return self._get_call("/players")
+        return self.get_call("/players")
 
     def deploy_all_groups(self):
         for group in self.group_dict.values():
@@ -125,7 +125,7 @@ class PySignageServer(PySignageAPI):
 
     def _refresh_group_dict(self):
         self.group_dict = {}
-        for group in self._get_call("/groups")['data']:
+        for group in self.get_call("/groups")['data']:
             if group['name'] == 'default':
                 continue
             group_object = self._group(group['_id'], group['name'], group)
@@ -133,7 +133,7 @@ class PySignageServer(PySignageAPI):
 
     def _refresh_device_dict(self):
         self.device_dict = {}
-        for device in self._get_call("/players")['data']["objects"]:
+        for device in self.get_call("/players")['data']["objects"]:
             id = device['_id']
             name = device['name']
             ip = device['myIpAddress'].split(" ")[0]

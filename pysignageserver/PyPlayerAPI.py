@@ -10,7 +10,7 @@ class PySigngagePlayer(PySignageAPI):
         #self.status = self.get_status()
 
     def get_status(self):
-        return self._get_call("/status")["data"]
+        return self.get_call("/status")["data"]
 
     def get_active_asset(self):
         return self.get_status()["currentPlayingFile"]
@@ -20,14 +20,14 @@ class PySigngagePlayer(PySignageAPI):
 
     def play_playlist(self, playlist_id):
         body = {"play": True}
-        self._post_call(f"/play/playlists/{playlist_id}", body)
+        self.post_call(f"/play/playlists/{playlist_id}", body)
 
     def stop_playlist(self, playlist_id):
         body = {"stop": True}
-        self._post_call(f"/play/playlists/{playlist_id}", body)
+        self.post_call(f"/play/playlists/{playlist_id}", body)
 
     def play_file(self, file_id):
-        self._post_call(f"/play/files/play?file={file_id}")
+        self.post_call(f"/play/files/play?file={file_id}")
 
     def play_cd_stream_playlist(self):
         self.play_playlist(self.stream_cd_playlist_name)
@@ -42,4 +42,4 @@ class PySigngagePlayer(PySignageAPI):
         self.play_playlist(self.cd_playlist_name)
 
     def forward(self):
-        self._post_call("/playlistmedia/forward")
+        self.post_call("/playlistmedia/forward")

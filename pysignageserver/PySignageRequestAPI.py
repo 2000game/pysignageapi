@@ -5,7 +5,7 @@ class PySignageAPI():
     def __init__(self, host, username, password, port):
         self.host = f"http://{username}:{password}@{host}:{port}/api"
 
-    def _post_call(self, datapoint, body=None):
+    def post_call(self, datapoint, body=None):
         try:
             r = requests.post(self.host + datapoint, data=body, timeout=5)
             if r.status_code == 200:
@@ -15,7 +15,7 @@ class PySignageAPI():
         except requests.exceptions.ConnectionError:
             raise
 
-    def _get_call(self, datapoint):
+    def get_call(self, datapoint):
         try:
             r = requests.get(self.host + datapoint, timeout=5)
             if r.status_code == 200:

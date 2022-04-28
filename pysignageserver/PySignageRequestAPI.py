@@ -16,7 +16,7 @@ class PySignageAPI():
         if r.status_code == 200:
             return self.string_to_json(r.text)
         else:
-            return
+            return True
 
     def string_to_json(self, string):
         return json.loads(string)

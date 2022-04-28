@@ -1,7 +1,7 @@
 import requests
 import json
 class PySignageAPI():
-    def __init__(self, ip, username, password, port):
+    def __init__(self, host, username, password, port):
         self.host = f"http://{username}:{password}@{ip}:{port}/api"
 
     def post_call(self, datapoint, body=None):

@@ -6,8 +6,8 @@ from pysignageserver.PySignageRequestAPI import PySignageAPI
 from pysignageserver.PyPlayerAPI import PySigngagePlayer
 
 class PySignageServer(PySignageAPI):
-    def __init__(self, ip, username, password, port=3000):
-        super().__init__(ip, username, password, port)
+    def __init__(self, host, username, password, port=3000):
+        super().__init__(host, username, password, port)
         self.stream_thread_list = None
         self.countdown_thread_list = None
         self.stream_only_thread_list = None
@@ -17,8 +17,6 @@ class PySignageServer(PySignageAPI):
         self.playlists = []
         self.device_dict = {}
         self.group_dict = {}
-        self.refresh()
-        self.create_threads()
 
     class _group():
         def __init__(self, group_id, group_name, group_data):
@@ -122,6 +120,7 @@ class PySignageServer(PySignageAPI):
         self.refresh_group_dict()
         self.refresh_device_dict()
         self.refresh_playlists()
+        self.create_threads()
 
     def refresh_group_dict(self):
         self.group_dict = {}
@@ -249,6 +248,9 @@ class PySignageServer(PySignageAPI):
             playlists = self.return_group_playlist_names(device['group_id'])
             if playlist_name in playlists:
                 device['device_class'].player_class.play_playlist(playlist_name)
+
+
+device = PySignageServer("10.10.1.101", "pi", "pi").refresh()
 
 
 device = PySignageServer("10.10.1.121", "pi", "pi")

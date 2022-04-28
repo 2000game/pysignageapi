@@ -248,10 +248,3 @@ class PySignageServer(PySignageAPI):
             playlists = self.return_group_playlist_names(device['group_id'])
             if playlist_name in playlists:
                 device['device_class'].player_class.play_playlist(playlist_name)
-
-
-device = PySignageServer("10.10.1.101", "pi", "pi").refresh()
-
-
-device = PySignageServer("10.10.1.121", "pi", "pi")
-device.return_to_scheduled_content()

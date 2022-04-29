@@ -245,8 +245,7 @@ class PySignageServer(PySignageAPI):
             device_playlist = device['player_class'].get_active_playlist()
             if device_playlist == playlist_id:
                 return True
-            else:
-                return False
+        return False
 
     def play_playlist_on_all_devices(self, playlist_name):
         """Plays a playlist on all devices that have the playlist deployed"""

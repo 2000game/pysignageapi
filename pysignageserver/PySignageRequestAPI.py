@@ -7,7 +7,7 @@ class PySignageAPI():
 
     def post_call(self, datapoint, body=None):
         try:
-            r = requests.post(self.host + datapoint, data=body, timeout=5)
+            r = requests.post(self.host + datapoint, data=body, timeout=20)
             if r.status_code == 200:
                 return SUCCESS
         except TypeError:
@@ -17,7 +17,7 @@ class PySignageAPI():
 
     def get_call(self, datapoint):
         try:
-            r = requests.get(self.host + datapoint, timeout=5)
+            r = requests.get(self.host + datapoint, timeout=20)
             if r.status_code == 200:
                 return self._string_to_json(r.text)
         except TypeError:

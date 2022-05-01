@@ -164,7 +164,7 @@ class PySignageServer(PySignageAPI):
 
     def return_to_scheduled_content(self):
         self.refresh()
-        for device in self.device_dict.values():
+        for device in list(self.device_dict.values()):
             active_playlist = device['player_class'].get_active_playlist()
             scheduled_playlist = device['group_pointer']._return_scheduled_playlist()["name"]
             playlist_data = self._get_playlist_data(active_playlist)

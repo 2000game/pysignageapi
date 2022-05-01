@@ -242,7 +242,7 @@ class PySignageServer(PySignageAPI):
 
     def get_playlist_state(self, playlist_id):
         devices = self.device_dict.values()
-        for device in devices:
+        for device in list(devices):
             device_playlist = device['player_class'].get_active_playlist()
             if device_playlist == playlist_id:
                 return True

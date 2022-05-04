@@ -250,7 +250,7 @@ class PySignageServer(PySignageAPI):
 
     def play_playlist_on_all_devices(self, playlist_name):
         """Plays a playlist on all devices that have the playlist deployed"""
-        for device in self.device_dict.values():
+        for device in list(self.device_dict.values()):
             playlists = self._return_group_playlist_names(device['group_id'])
             if playlist_name in playlists:
                 device['device_class'].player_class.play_playlist(playlist_name)

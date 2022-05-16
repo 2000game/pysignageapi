@@ -188,7 +188,9 @@ class PySignageServer(PySignageAPI):
         player_class.play_cd_file()
 
     def _default_countdown_stream_thread(self, player_pointer):
-        player_pointer.play_cd_stream_playlist()
+        player_pointer.play_cd_file()
+        time.sleep(326)
+        player_pointer.play_stream_only_file()
 
     def _stream_only_thread(self, player_pointer):
         player_pointer.play_stream_only_file()

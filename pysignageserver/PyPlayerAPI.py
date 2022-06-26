@@ -2,7 +2,7 @@ from pysignageserver.PySignageRequestAPI import PySignageAPI
 class PySigngagePlayer(PySignageAPI):
     def __init__(self, host, username, password, port=8000):
         super().__init__(host, username, password, port)
-        self.cd_file_name = "CD 5Min FINAL 20220414.mov"
+        self.cd_file_name = "CD 5Min FINAL 20220414.mp4"
         self.stream_file_name = "Stream.stream"
         self.stream_cd_playlist_name = 'Video Anzeigen Countdown'
         self.cd_playlist_name = 'Countdown'

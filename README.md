@@ -1,2 +1,2 @@
 # pysignageapi
-a PI Signage API Integration for Home Assistant
+a PI Signage API client for Python

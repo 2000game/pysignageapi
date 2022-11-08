@@ -172,7 +172,7 @@ class PySignageServer(PySignageAPI):
             active_asset = device['player_class'].get_active_asset()
             if active_asset not in active_playlist_assets:
                 device['player_class'].forward()
-                return
+                continue
             if active_playlist != scheduled_playlist:
                 device['player_class'].stop_playlist(active_playlist)
         return True

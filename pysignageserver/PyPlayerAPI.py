@@ -43,3 +43,4 @@ class PySigngagePlayer(PySignageAPI):
 
     def forward(self):
         self.post_call("/playlistmedia/forward")
+

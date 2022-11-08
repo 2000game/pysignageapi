@@ -45,13 +45,14 @@ class PySignageServer(PySignageAPI):
                     if week_day in settings['weekdays']:
                         if month_day in settings['monthdays']:
                             if 'startdate' in settings:
-                                startdate = settings['startdate'][:19]+ "+0000"
-                                enddate = settings['enddate'][:19]+"+0000"
+                                startdate = settings['startdate'][:10]
+                                enddate = settings['enddate'][:10]
                                 starttime = settings['starttimeObj'][10:19] + "+0000"
                                 endtime = settings['endtimeObj'][10:19] + "+0000"
-                                time_range = DateTimeRange(starttime, endtime)
-                                date_range = DateTimeRange(startdate, enddate)
-                                if current_time in time_range and current_time in date_range:
+                                full_start_time = startdate + starttime
+                                full_end_time = enddate + endtime
+                                time_range = DateTimeRange(full_start_time, full_end_time)
+                                if current_time in time_range:
                                     possible_playlists.append(playlist)
                             else:
                                 starttime = settings['starttime']
@@ -257,3 +258,6 @@ class PySignageServer(PySignageAPI):
             if playlist_name in playlists:
                 device['device_class'].player_class.play_playlist(playlist_name)
         return True
+
+
+
